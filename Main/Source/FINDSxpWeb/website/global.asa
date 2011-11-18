@@ -1,0 +1,90 @@
+<SCRIPT RUNAT=SERVER LANGUAGE=VBScript>
+
+Sub Application_OnStart
+	'Production DB over TCP/IP
+	Application("DB_CONNECT_STRING") = "Provider=" & "sqloledb" & ";" & "Server=" & "CMHRFO-FXPSQL" & ";" & "Initial Catalog=" & "RFILogistics" & ";" & "User ID=" & "FINDSxpWeb" & ";" & "Password=" & "rfinternational" & ";" & "Network Library=DBMSSOCN;"
+
+	'Test DB over Named Pipes
+	'Application("DB_CONNECT_STRING") = "Provider=" & "sqloledb" & ";" & "Server=" & "CMHRFO-SQLTEST" & ";" & "Initial Catalog=" & "RFILogistics" & ";" & "User ID=" & "FINDSxpWeb" & ";" & "Password=rfinternational" & ";"
+
+	'Production DB over Named Pipes
+	'Application("DB_CONNECT_STRING") = "Provider=" & "sqloledb" & ";" & "Server=" & "CMHRFO-FXPSQL" & ";" & "Initial Catalog=" & "RFILogistics" & ";" & "User ID=" & "FINDSxpWeb" & ";" & "Password=rfinternational" & ";"
+
+	' Request.ServerVariables cannot be accessed through application OnStart, so I must fetch them at the first session start, and handle ServerVariable related initialization in the first session that opens
+	Application ("blnInitComplete") = false
+End Sub
+
+Sub Session_OnStart
+	Dim objEventLog
+	Dim fso
+	Dim folder
+	Dim file
+	Dim files
+
+	' Request.ServerVariables cannot be accessed through application OnStart, so I must fetch them at the first session start.
+	if Application ("blnInitComplete") <> true Then
+		Application("LOCAL_ADDR") = Request.ServerVariables("LOCAL_ADDR")
+		
+		' Set the directories for the reports depending on the server we are (determined by IP address)
+		'	THEN delete all of the files for any output reports (as a backup for when the Session_OnEnd fails to delete a report)
+		
+
+		Application("CRYSTAL_REPORTS_DIRECTORY") = "\inetpub\sagweb\reports\"
+		Application("EXPORT_REPORTS_DIRECTORY") = "\inetpub\sagweb\website\tempdocuments\"
+
+		
+		' Go ahead and delete the reports
+		Set fso = Server.CreateObject("Scripting.FileSystemObject")
+				
+		' Only delete all of the files in the directory if the word 'temp' is in the directory name
+		if instr(1, Application("EXPORT_REPORTS_DIRECTORY"), "temp") then
+			Set folder = fso.GetFolder(Application("EXPORT_REPORTS_DIRECTORY"))
+			Set files = folder.Files
+
+			For each file in files
+				file.delete
+			Next
+			Set folder = nothing
+			set files = nothing
+			set file = nothing
+		else
+			' Write an error to the event log if the directory wasn't set properly
+			Set objEventLog = Server.CreateObject("prjEventLogWrite.clsEventLog")
+			objEventLog.EventLogWrite(vbCrLf & "IMPORTANT ERROR: The report directories have not been set properly for this server.  Check the website's global.asa file for possible problems.  Either the report directory folders have not been set for this server in the application variables, or the documents directory does not contain the word, 'temp' in the path (this is the directory from which we regularly delete all of the files.)")
+			set objEventLog = Nothing
+		end if
+		
+		set fso = nothing
+		
+		Application ("blnInitComplete") = true
+	end if
+End Sub
+
+Sub Session_OnEnd
+	Dim fso
+	Dim folder
+	Dim files
+	Dim file
+	
+	Set fso = Server.CreateObject("Scripting.FileSystemObject")
+		
+	' Delete associated all files associated with the last report generated (HTML exports sometimes include images)
+	if session("LeftTextOfExportFilesToDelete") <> "" Then
+		Set folder = fso.GetFolder(Application("EXPORT_REPORTS_DIRECTORY"))
+		Set files = folder.Files
+
+		For each file in files
+			if session("LeftTextOfExportFilesToDelete") <> "" and left(ucase(file.name), len(session("LeftTextOfExportFilesToDelete"))) = ucase(session("LeftTextOfExportFilesToDelete")) then 
+				file.delete
+			end if
+		Next
+		session("LeftTextOfExportFilesToDelete") = ""
+		Set folder = nothing
+		set files = nothing
+		set file = nothing
+	End If
+	
+	Set fso = Nothing
+End Sub
+
+</SCRIPT>

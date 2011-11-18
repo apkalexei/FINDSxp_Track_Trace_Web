@@ -1,0 +1,116 @@
+<%@ language=vbscript %>
+<% On Error Resume Next 
+   Response.Buffer = False
+%>
+<!--#include file="include/checkuserlogin.asp"-->
+<!--#include file="include/webfunctions.asp"-->
+
+<%
+	Dim rs, objConn
+
+	set objConn = server.createobject("ADODB.Connection")
+	set rs = server.createobject("ADODB.RecordSet")
+	objConn.Open Application("DB_CONNECT_STRING")
+	
+	Dim blnShowBooking
+	Dim blnShowBOL
+	Dim blnShowRates
+	Dim i
+	Dim strTemp
+	
+	' ************************** TBA ******************************
+	rs.Open "fwpUserTransTypeSelect '" & session("UserRole") & "'", objconn
+	CheckError ("Opening rs")
+	' Determine which Transaction Types to show for this particular user type
+	' Save these values in the session object - only allow a user to view the transaction types that he has access to on all later pages
+	strTemp = "~"
+	do while Not rs.EOF
+		if rs("oTransType") = 0 Then 
+			blnShowBooking = True
+			strTemp = strTemp & "0~"
+		elseif rs("oTransType") = 1 Then 
+			blnShowBOL = True 
+			strTemp = strTemp & "1~"
+		elseif rs("oTransType") = 2 Then 
+			blnShowRates = True 
+			strTemp = strTemp & "2~"
+		end If
+		rs.MoveNext
+	loop
+	Session ("availtxtypes") = strTemp
+	CheckError ("Looping through transaction types in rs")
+	
+	' if there are no options, then it's a site malfunction that the event log should be informed of
+	if len(strTemp) < 2 Then
+		rs.Close
+		objConn.Close
+		Set rs = Nothing
+		Set objConn = Nothing
+		
+		LogEvent("No options were offered to this user on Transaction Selection page.  The SP call that returned this info was fwpUserTransTypeSelect '" & session("UserRole") & "'")
+		Response.Redirect("error.asp")
+	' if there is only one option, then redirect to it
+	ElseIf len(strTemp) < 4 Then
+		rs.Close
+		objConn.Close
+		Set rs = Nothing
+		Set objConn = Nothing
+		
+		Response.Redirect("review.asp?MnTransType=" & mid(strTemp, 2, 1))
+	End If
+	
+	
+%>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+	<TITLE>RF International - Transaction Selection Screen </TITLE>
+</HEAD>
+<BODY text=#ffffff vLink=#ffcc66 aLink=#0099cc link=#ffcc66 bgColor=#006699 leftMargin=8 topMargin=8>
+
+
+<TABLE height="100%" cellSpacing=0 cellPadding=0 width="100%" border=0>
+	<TR vAlign=center align=middle>
+		<TD align=center>
+			<TABLE cellSpacing=0 cellPadding=0 border=0>
+				<tr>
+					<TD width=vAlign=top align=center colSpan=2 rowSpan=2>
+						<img alt='' src='pictures/shipataglancetitle.jpg'><br>
+						<b><font size=6>T</font><font size=5>RANSACTION</font><font size=6>&nbsp;S</font><font size=5>ELECTION</font></b></td>
+					</td>
+				</tr>
+				<tr>
+				</tr>
+				<TR>
+			<% if strError <> "" Then %>
+				<TR>
+					<td colspan=2 align=center><FONT face="Tahoma, Arial, Helvetica, sans-serif" size=2><b><%= strError %></b></font></td>
+				</TR>
+			<% end if %>
+					<TD valign=top align=center height=160 colspan=2>
+						<TABLE cellSpacing=2 cellPadding=2 border=0 name="form">
+							<%
+							' Show the links for each Transaction type, based on user role
+							' ************************** TBA ******************************
+							If blnShowBooking Then Response.Write("<TR vAlign=center><TD><a href='review.asp?MnTransType=0'><FONT face='Tahoma, Arial, Helvetica, sans-serif' size=2><b>BOOKING</b></font></a></TD></TR>")
+							If blnShowBOL Then Response.Write("<TR vAlign=center><TD><a href='review.asp?MnTransType=1'><FONT face='Tahoma, Arial, Helvetica, sans-serif' size=2><b>BILL OF LADING</b></font></a></TD></TR>")
+							If blnShowRates Then Response.Write("<TR vAlign=center><TD><a href='review.asp?MnTransType=2'><FONT face='Tahoma, Arial, Helvetica, sans-serif' size=2><b>RATES</b></font></a></TD></TR>")
+							rs.Close
+							objConn.Close()
+							Set rs = Nothing
+							Set objConn = Nothing
+							%>
+						</TABLE>
+					</TD>
+				</TR>
+			</TABLE>
+		</TD>
+	</TR>
+</TABLE>
+
+
+
+
+</BODY></HTML>
+<% CheckError ("Error found at end of page.") 
+%>

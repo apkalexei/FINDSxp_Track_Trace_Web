@@ -1,0 +1,78 @@
+<%@ language=vbscript %>
+<!--#include file="include/webfunctions.asp"-->
+<%
+	On Error Resume Next
+	Response.Buffer = False
+	
+	Dim strUserName
+	Dim strError
+	
+	strUserName = getQueryItem("username", "A")
+	strError = getQueryItem("err", "A")
+	
+	Dim i
+
+	Set bc = Server.CreateObject("MSWC.BrowserType") 
+	
+	if bc.Version >= 4 Then
+		' Do nothing
+	elseif bc.Browser="Default" Then
+		' Do nothing
+	else
+		Response.Redirect("oldbrowser.asp")
+	end if
+
+%>
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+	<TITLE>RF International - Login Screen</TITLE>
+</HEAD>
+<BODY text=#ffffff vLink=#ffcc66 aLink=#0099cc link=#ffcc66 bgColor=#006699 leftMargin=8 topMargin=8>
+
+<TABLE height="100%" cellSpacing=0 cellPadding=0 width="100%" border=0>
+	<TR vAlign=center align=middle>
+		<TD align=center>
+			<TABLE cellSpacing=0 cellPadding=0 border=0>
+				<tr>
+					<TD width=vAlign=top align=center colSpan=2 rowSpan=2>
+						<img alt='' src='pictures/shipataglancetitle.jpg'><br>
+						<b><font size=6>U</font><font size=5>SER</font><font size=6>&nbsp;L</font><font size=5>OGIN</font></b>
+					</td>
+				</tr>
+				<tr>
+				</tr>
+				<TR>
+			<% if strError <> "" Then %>
+				<TR>
+					<td colspan=2 align=center><FONT face="Tahoma, Arial, Helvetica, sans-serif" size=2><b><%= strError %></b></font></td>
+				</TR>
+			<% end if %>
+					<TD valign=top align=center height=160 colspan=2>
+						<FORM name=login action='xt_login.asp' method=get>
+							<TABLE cellSpacing=2 cellPadding=2 width=50 border=0 name="form">
+								<TR vAlign=center>
+									<TH align=right><FONT face="Tahoma, Arial, Helvetica, sans-serif" size=2>UserName:</FONT></TH>
+									<TD><INPUT id=autho title="Enter your username" size=15 name=username value=<%= strUserName %>> </TD>
+								</TR>
+								<TR vAlign=center>
+									<TH align=right><FONT face="Tahoma, Arial, Helvetica, sans-serif" size=2>Password:</FONT></TH>
+									<TD><INPUT id=password title="Enter your password" type=password size=15 name=password></TD>
+								</TR>
+								<TR vAlign=center>
+									<TD align=right><INPUT title="Start your Pacer session" accessKey=s type=submit value=Login name=submit></TD>
+								</TR>
+							</TABLE>
+						</FORM>
+					</TD>
+				</TR>
+			</TABLE>
+		</TD>
+	</TR>
+</TABLE>
+
+</BODY></HTML>
+
+<% CheckError ("Error found at end of page.")
+%>
