@@ -57,7 +57,13 @@ Public Sub ExportReport(ByVal str_in_ReportType As String, ByVal str_in_ReportFi
     Dim i As Integer
     Dim Report As New CRAXDRT.Report
     Dim application As New CRAXDRT.application
-    
+    Dim crxTables As CRAXDRT.DatabaseTables
+    Dim crxTable As CRAXDRT.DatabaseTable
+    Dim crxSubreportObject As CRAXDRT.SubreportObject
+    Dim crxSubReport As CRAXDRT.Report
+    Dim crxSections As CRAXDRT.Sections
+    Dim crxSection As CRAXDRT.Section
+    Dim fi As Integer, fj As Integer
     ' Used for counting parameters and creating an error based on the parameters
     Dim crpParamDefs As CRAXDRT.ParameterFieldDefinitions
     Dim crpParamDef As CRAXDRT.ParameterFieldDefinition
@@ -73,9 +79,39 @@ Public Sub ExportReport(ByVal str_in_ReportType As String, ByVal str_in_ReportFi
     End If
     
     Set fso = Nothing
-    
+    cServer = fcnUTILITIES_GetPrivateProfileString("PLATFORM", "SERVER", App.Path & "\prjReportExporter.ini")
+    cDataBase = fcnUTILITIES_GetPrivateProfileString("PLATFORM", "DATABASE", App.Path & "\prjReportExporter.ini")
+    cUser = fcnUTILITIES_GetPrivateProfileString("PLATFORM", "USER", App.Path & "\prjReportExporter.ini")
+    cPWD = fcnUTILITIES_GetPrivateProfileString("PLATFORM", "PWD", App.Path & "\prjReportExporter.ini")
     ' Open the report
-    Set Report = application.OpenReport(str_in_ReportFileName)
+    Set Report = application.OpenReport(str_in_ReportFileName, 1)
+    Report.Database.Tables(1).SetLogOnInfo cServer, cDataBase, cUser, cPWD
+    'This removes the schema from the Database Table's Location property.
+    Set crxTables = Report.Database.Tables
+    For Each crxTable In crxTables
+        With crxTable
+             .Location = .Name
+        End With
+    Next
+    'Loop through the Report's Sections to find any subreports, and change them as well
+    Set crxSections = Report.Sections
+    For fi = 1 To crxSections.Count
+        Set crxSection = crxSections(fi)
+        For fj = 1 To crxSection.ReportObjects.Count
+            If crxSection.ReportObjects(fj).Kind = crSubreportObject Then
+                Set crxSubreportObject = crxSection.ReportObjects(fj)
+                'Open the subreport, and treat like any other report
+                Set crxSubReport = crxSubreportObject.OpenSubreport
+                Set crxTables = crxSubReport.Database.Tables
+                For Each crxTable In crxTables
+                    With crxTable
+                        .SetLogOnInfo cServer, cDataBase, cUser, cPWD
+                        .Location = .Name
+                    End With
+                Next
+            End If
+        Next fj
+    Next fi
     ' Disable any messages - the web server can't deal with parameters being handled in this way
     Report.EnableParameterPrompting = False
     Report.MorePrintEngineErrorMessages = False
@@ -129,7 +165,14 @@ Public Sub ExportReport(ByVal str_in_ReportType As String, ByVal str_in_ReportFi
     End If
     
     Set fso = Nothing
-    
+    Set Report = Nothing
+    Set application = Nothing
+    Set crxTables = Nothing
+    Set crxTable = Nothing
+    Set crxSubreportObject = Nothing
+    Set crxSubReport = Nothing
+    Set crxSections = Nothing
+    Set crxSection = Nothing
     Exit Sub
 err_ExportReport:
     Err.Raise -12345123, "clsReportExporter.ExportReport", "Error: " & Err.Description
