@@ -19,7 +19,10 @@ Public Enum enmReportExportFileTypes
     FT_EXPORT_WORD = 1
     FT_EXPORT_HTML = 2
 End Enum
-
+Public cServer As String
+Public cDataBase As String
+Public cUser As String
+Public cPWD As String
 Private aryRptParamArray() As Variant
 Private intCurrentParameter As Integer
 
