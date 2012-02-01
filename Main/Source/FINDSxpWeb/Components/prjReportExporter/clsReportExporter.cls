@@ -19,7 +19,10 @@ Public Enum enmReportExportFileTypes
     FT_EXPORT_WORD = 1
     FT_EXPORT_HTML = 2
 End Enum
-
+Public cServer As String
+Public cDataBase As String
+Public cUser As String
+Public cPWD As String
 Private aryRptParamArray() As Variant
 Private intCurrentParameter As Integer
 
@@ -57,7 +60,8 @@ Public Sub ExportReport(ByVal str_in_ReportType As String, ByVal str_in_ReportFi
     Dim i As Integer
     Dim Report As New CRAXDRT.Report
     Dim application As New CRAXDRT.application
-    
+    Dim tbl As CRAXDRT.DatabaseTable
+    Dim tbls As CRAXDRT.DatabaseTables
     ' Used for counting parameters and creating an error based on the parameters
     Dim crpParamDefs As CRAXDRT.ParameterFieldDefinitions
     Dim crpParamDef As CRAXDRT.ParameterFieldDefinition
@@ -73,9 +77,28 @@ Public Sub ExportReport(ByVal str_in_ReportType As String, ByVal str_in_ReportFi
     End If
     
     Set fso = Nothing
-    
+    cServer = fcnUTILITIES_GetPrivateProfileString("PLATFORM", "SERVER", App.Path & "\prjReportExporter.ini")
+    cDataBase = fcnUTILITIES_GetPrivateProfileString("PLATFORM", "DATABASE", App.Path & "\prjReportExporter.ini")
+    cUser = fcnUTILITIES_GetPrivateProfileString("PLATFORM", "USER", App.Path & "\prjReportExporter.ini")
+    cPWD = fcnUTILITIES_GetPrivateProfileString("PLATFORM", "PWD", App.Path & "\prjReportExporter.ini")
     ' Open the report
-    Set Report = application.OpenReport(str_in_ReportFileName)
+    Set Report = application.OpenReport(str_in_ReportFileName, 1)
+    For Each tbl In Report.Database.Tables
+        tbl.ConnectionProperties.DeleteAll
+        tbl.ConnectionProperties.Add "Provider", "SQLOLEDB"
+        tbl.ConnectionProperties.Add "Data Source", cServer
+        tbl.ConnectionProperties.Add "Initial Catalog", cDataBase
+        'tbl.ConnectionProperties.Add "Integrated Security", "True"   ' cut for sql authentication
+        tbl.ConnectionProperties.Add "User Id", cUser   ' add for sql authentication
+        tbl.ConnectionProperties.Add "Password", cPWD  ' add for sql authentication
+    Next tbl
+    'This removes the schema from the Database Table's Location property.
+    Set tbls = Report.Database.Tables
+    For Each tbl In tbls
+        With tbl
+            .Location = .Name
+        End With
+    Next
     ' Disable any messages - the web server can't deal with parameters being handled in this way
     Report.EnableParameterPrompting = False
     Report.MorePrintEngineErrorMessages = False
